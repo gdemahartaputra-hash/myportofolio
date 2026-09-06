@@ -7,10 +7,10 @@
 }
 
 :root {
-    --ink: #1c1917;
+    --ink: #283618;
     --paper: #faf6f0;
-    --accent: #d95d39;
-    --accent-dark: #a8442a;
+    --accent: #DDA15E;
+    --accent-dark: #BC6C25;
     --line: #e3d9c9;
     --text-muted: #6b6459;
     --radius: 4px;
@@ -28,26 +28,32 @@ h1, .brand {
 }
 
 .container {
-    max-width: 960px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 0.5rem;
 }
 
 /* Header dengan Flexbox */
 
 .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     border-bottom: 1px solid var(--line);
+    background-color: rgba(250, 246, 240, 0.7); /* --paper dengan opacity 70% */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 .site-header .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 1.5rem;
+    padding: 1.25rem 0.5rem;
 }
 
 .brand {
-    font-size: 1.3rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--ink);
     text-decoration: none;
@@ -55,6 +61,7 @@ h1, .brand {
 
 .site-header nav {
     display: flex;
+    align-items: center;
     gap: 2rem;
 }
 
@@ -98,9 +105,38 @@ h1, .brand {
 }
 
 .hero-identity h1 {
+    font-family: "Playfair Display", serif;
+    font-weight: 700;
     font-size: clamp(3rem, 7vw, 5rem);
     line-height: 0.95;
 }
+
+.cv-link {
+    display: block;
+    text-align: center;
+    margin-top: 0rem;
+    padding: 0.65rem 0rem;
+    background-color: var(--ink);
+    color: var(--paper);
+    border-radius: 2rem;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+    position: relative;
+    z-index: 10;
+}
+
+.cv-link:hover {
+    background-color: var(--accent);
+}
+
+.accent-name {
+    color: #606C38;
+    font-style: italic;
+    font-weight: 600;
+}
+
 
 .bio {
     color: var(--text-muted);
