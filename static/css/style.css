@@ -212,6 +212,55 @@ h1, .brand {
     border: 3px solid var(--ink);
 }
 
+/* Education section */
+.education-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    padding: 4rem 0 4rem 3.5rem;
+}
+
+.education-item {
+    padding: 1.5rem;
+    border-left: 3px solid var(--line);
+    animation: educationPulse linear forwards;
+    animation-timeline: view();
+    animation-range: entry 0% cover 50%;
+}
+
+@keyframes educationPulse {
+    0% {
+        opacity: 0.4;
+        transform: scale(0.9);
+        border-color: var(--line);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1.08);
+        border-color: var(--accent);
+    }
+}
+
+.education-year {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.education-item h2 {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.education-detail {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
 /* Footer & Responsive */
 
 .site-footer {
