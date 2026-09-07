@@ -30,7 +30,7 @@ h1, .brand {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 0.5rem;
+    padding: 0 1.5rem;
 }
 
 /* Header dengan Flexbox */
@@ -49,7 +49,7 @@ h1, .brand {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 0.5rem;
+    padding: 1.25rem 1.5rem;
 }
 
 .brand {
@@ -83,7 +83,8 @@ h1, .brand {
     grid-template-columns: 1.3fr 1fr;
     grid-template-areas:
         "identity photo"
-        "details  photo";
+        "details  photo"
+        "details     cv";
     gap: 1.5rem 3rem;
 }
 
@@ -165,8 +166,8 @@ h1, .brand {
 }
 
 .cvsection {
-    grid-area: photo;
-    align-self: flex-end;
+    grid-area: cv;
+    align-self: end;
     position: relative;
 }
 
@@ -192,7 +193,7 @@ h1, .brand {
 
 .hero-photo {
     grid-area: photo;
-    align-self: flex-start;
+    align-self: center;
     position: relative;
 }
 
@@ -231,7 +232,7 @@ h1, .brand {
     color: inherit;
     display: block;
     position: relative;
-    padding: 1.5rem;
+    padding: 1.5rem 220px 1.5rem 1.5rem;
     border-left: 3px solid var(--line);
     animation: educationPulse linear both;
     animation-timeline: view();
@@ -417,11 +418,24 @@ h1, .brand {
         grid-template-areas:
             "identity"
             "photo"
+            "cv"
             "details";
     }
 
     .hero-photo {
         max-width: 220px;
+    }
+
+    .cvsection {
+        max-width: 220px;
+    }
+
+    .education-item {
+        padding-right: 1.5rem;
+    }
+
+    .education-logo {
+        display: none;
     }
 
     .social-links {
