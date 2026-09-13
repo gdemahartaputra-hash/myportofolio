@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from main.models import Experience
+from main.models import Experience, Education
 
 
 class MainTest(TestCase):
@@ -11,6 +11,13 @@ class MainTest(TestCase):
             title="Asisten Dosen PBP",
             description="Membantu mahasiswa memahami pengembangan web.",
             category="part-time",
+        )
+        self.education = Education.objects.create(
+            school_name="Universitas Indonesia",
+            major="Information System Undergraduate, Faculty of Computer Science",
+            grade="Current GPA: 3.82/4.0",
+            category="bachelor-degree",
+            started_year=2025,
         )
 
     def test_main_url_is_accessible(self):
@@ -56,3 +63,27 @@ class MainTest(TestCase):
         self.assertFalse(self.experience.is_ongoing)
         self.assertContains(response, "Selesai")
         self.assertNotContains(response, "Sedang berlangsung")
+
+    # Education Test
+
+    def test_education_url_is_accessible(self):
+        response = self.client.get(reverse("main:show_education"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "education.html")
+        self.assertContains(response, f'href="{reverse("main:show_main")}"')
+
+    def test_education_page_shows_data(self):
+        response = self.client.get(reverse("main:show_education"))
+
+        self.assertContains(response, self.education.school_name)
+        self.assertContains(response, self.education.major)
+        self.assertContains(response, self.education.grade)
+        self.assertContains(response, "2025")
+        self.assertContains(response, "Present")
+
+    def test_empty_education_page(self):
+        Education.objects.all().delete()
+        response = self.client.get(reverse("main:show_education"))
+
+        self.assertContains(response, "Belum ada riwayat pendidikan yang ditambahkan.")
