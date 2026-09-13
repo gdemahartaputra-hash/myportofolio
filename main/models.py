@@ -9,6 +9,7 @@ class Experience(models.Model):
         ('part-time', 'Part-Time'),
         ('full-time', 'Full-Time'),
         ('freelance', 'Freelance'),
+        ('study', 'Study'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -24,3 +25,28 @@ class Experience(models.Model):
     @property
     def is_ongoing(self):
         return self.ended_at is None
+
+class Education(models.Model):
+    EDUCATION_CHOICES = [
+        ('master-degree', "Master's Degree"),
+        ('bachelor-degree', "Bachelor's Degree"),
+        ('senior-highschool', 'Senior High School'),
+        ('junior-highschool', 'Junior High School'),
+        ('elementary', 'Elementary School'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    school_name = models.CharField(max_length=255)
+    major = models.CharField(max_length=255)
+    grade = models.CharField(max_length=100)
+    category = models.CharField(max_length=20, choices=EDUCATION_CHOICES, default='bachelor-degree')
+    thumbnail = models.URLField(blank=True, null=True)
+    started_year = models.PositiveIntegerField()
+    ended_year = models.PositiveIntegerField(blank=True, null=True)
+
+    def __str__(self):
+        return self.school_name
+
+    @property
+    def is_ongoing(self):
+        return self.ended_year is None
