@@ -257,3 +257,35 @@ Untuk Tugas 2, AI digunakan sebagai pair-programmer untuk: (1) menjelaskan konse
 - Membuat `experience_form.html` dan `education_form.html` yang mendukung mode create maupun update dalam satu template (`action` form berubah sesuai ada/tidaknya instance).
 - Membuat komponen `experience_delete_modal.html` dan `education_delete_modal.html`, mengikuti pola `project_delete_modal.html`.
 - Menambahkan tombol "Tambah", "Edit", dan modal konfirmasi hapus pada `experience.html` dan `education.html`.
+
+## AI Disclosure
+
+Tools yang digunakan: Claude Code (model Claude Sonnet 5).
+
+Untuk Tugas 3 ini, saya cukup sering berdiskusi dengan AI, terutama saat membangun fitur CRUD untuk Experience dan Education berdasarkan pola yang sudah saya buat di bagian Projects.
+
+**Saya:** "Saya sudah selesai bikin form buat Projects. Nah, sekarang saya bingung mulai dari mana buat bikin form yang sama buat Experience sama Education. Apakah polanya bisa persis sama?"
+
+**AI:** Polanya bisa sama karena ketiganya sama-sama pakai `ModelForm`. Bedanya cuma field yang tersedia di tiap model, Experience punya `category` dan `thumbnail`, Education punya `started_year`/`ended_year`. Selama field di `Meta.fields` disesuaikan dengan model masing-masing, struktur form, view create, dan template-nya bisa direplikasi langsung.
+
+---
+
+**Saya:** "Terus kalau misal user mau ubah data yang sudah ada gimana? Apa formnya beda sendiri atau bisa pakai yang sama?"
+
+**AI:** Bisa pakai form yang sama. Django `ModelForm` menerima parameter `instance=`, kalau diisi objek yang sudah ada, form otomatis terisi data lama dan saat disimpan akan meng-update baris itu, bukan membuat baru. Jadi cukup satu view dengan percabangan: kalau ada `instance`, berarti mode edit; kalau tidak, mode tambah baru.
+
+---
+
+**Saya:** "Terus buat hapus data gimana? Saya pengen ada konfirmasi dulu sebelum kehapus, biar gak kepencet gak sengaja."
+
+**AI:** Bisa pakai elemen `popover` bawaan HTML sebagai modal konfirmasi, tanpa perlu JavaScript tambahan. Tombol "Hapus" membuka popover berisi pertanyaan konfirmasi, baru di dalamnya ada form kecil `method="post"` yang benar-benar memanggil view delete kalau user menekan "Ya, Hapus".
+
+---
+
+**Saya:** "Terakhir, saya masih agak bingung soal JSON ini. Kenapa harus diubah ke JSON dulu, terus diubah balik lagi? Kok muter-muter gitu?"
+
+**AI:** Karena tujuannya beda-beda. Endpoint JSON (`get_experience_json`, dst.) itu buat siapa pun yang butuh data mentah, bisa dipakai aplikasi lain, AJAX, atau sekadar dicek manual lewat browser. Sementara halaman HTML (`show_experience`) butuh objek Python asli supaya bisa dipakai method-nya (`is_ongoing`, `get_category_display`), jadi data JSON itu perlu "dibongkar" lagi jadi objek lewat `deserialize()` sebelum dikirim ke template.
+
+## Ringkasan Peran AI
+
+AI berperan sebagai partner diskusi sekaligus penulis draf kode untuk fitur CRUD Experience dan Education (form, view, URL, template, modal konfirmasi hapus), berdasarkan pola yang sudah saya bangun sendiri di bagian Projects. Saya yang menempatkan, menyesuaikan, dan menguji kode tersebut langsung di proyek.
