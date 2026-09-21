@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from main.models import Experience, Education, Project
-from main.forms import ProjectForm
+from main.forms import ProjectForm, ExperienceForm, EducationForm
 
 
 def show_main(request):
@@ -19,22 +19,137 @@ def show_main(request):
     }
     return render(request, "index.html", context)
 
+# Experience Section
 
 def show_experience(request):
+    json_response = get_experience_json(request)
+    experiences = serializers.deserialize(
+        "json",
+        json_response.content.decode("utf-8"),
+    )
+    experiences = [e.object for e in experiences]
+
     context = {
         "name": "Gde Maharta Putra Wicaksana Ridjasa",
         "nickname": "Putra",
-        "experience_list": Experience.objects.all(),
+        "experience_list": experiences,
     }
     return render(request, "experience.html", context)
 
-def show_education(request):
+def get_experience_json(request):
+    experiences = Experience.objects.all()
+    experiences_json = serializers.serialize("json", experiences)
+    return HttpResponse(experiences_json, content_type="application/json")
+
+def create_experience(request):
+    form = ExperienceForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Pengalaman baru berhasil ditambahkan!")
+        return redirect("main:show_experience")
+
     context = {
         "name": "Gde Maharta Putra Wicaksana Ridjasa",
         "nickname": "Putra",
-        "education_list": Education.objects.all().order_by('-started_year'),
+        "form": form,
+    }
+    return render(request, "experience_form.html", context)
+
+def update_experience(request, experience_id):
+    experience = get_object_or_404(Experience, pk=experience_id)
+    form = ExperienceForm(request.POST or None, instance=experience)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Pengalaman berhasil diperbarui!")
+        return redirect("main:show_experience")
+
+    context = {
+        "name": "Gde Maharta Putra Wicaksana Ridjasa",
+        "nickname": "Putra",
+        "form": form,
+        "experience": experience,
+    }
+    return render(request, "experience_form.html", context)
+
+def delete_experience(request, experience_id):
+    experience = get_object_or_404(Experience, pk=experience_id)
+
+    if request.method == "POST":
+        experience.delete()
+        messages.success(request, "Pengalaman berhasil dihapus!")
+        return redirect("main:show_experience")
+
+    return redirect("main:show_experience")
+
+# Education Section
+
+def show_education(request):
+    json_response = get_education_json(request)
+    educations = serializers.deserialize(
+        "json",
+        json_response.content.decode("utf-8"),
+    )
+    educations = [e.object for e in educations]
+    educations.sort(key=lambda e: e.started_year, reverse=True)
+
+    context = {
+        "name": "Gde Maharta Putra Wicaksana Ridjasa",
+        "nickname": "Putra",
+        "education_list": educations,
     }
     return render(request, "education.html", context)
+
+def get_education_json(request):
+    educations = Education.objects.all().order_by('-started_year')
+    educations_json = serializers.serialize("json", educations)
+    return HttpResponse(educations_json, content_type="application/json")
+
+def create_education(request):
+    form = EducationForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Riwayat pendidikan berhasil ditambahkan!")
+        return redirect("main:show_education")
+
+    context = {
+        "name": "Gde Maharta Putra Wicaksana Ridjasa",
+        "nickname": "Putra",
+        "form": form,
+    }
+    return render(request, "education_form.html", context)
+
+def update_education(request, education_id):
+    education = get_object_or_404(Education, pk=education_id)
+    form = EducationForm(request.POST or None, instance=education)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Riwayat pendidikan berhasil diperbarui!")
+        return redirect("main:show_education")
+
+    context = {
+        "name": "Gde Maharta Putra Wicaksana Ridjasa",
+        "nickname": "Putra",
+        "form": form,
+        "education": education,
+    }
+    return render(request, "education_form.html", context)
+
+
+def delete_education(request, education_id):
+    education = get_object_or_404(Education, pk=education_id)
+
+    if request.method == "POST":
+        education.delete()
+        messages.success(request, "Riwayat pendidikan berhasil dihapus!")
+        return redirect("main:show_education")
+
+    return redirect("main:show_education")
+
+# Projects Section
 
 def create_project(request):
     form = ProjectForm(request.POST or None)
@@ -62,7 +177,8 @@ def show_projects(request):
     title_query = request.GET.get("title", "").strip()
 
     context = {
-        "name": "Burhan",
+        "name": "Gde Maharta Putra Wicaksana Ridjasa",
+        "nickname": "Putra",
         "project_list": projects,
         "title_query": title_query,
     }

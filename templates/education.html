@@ -1,11 +1,16 @@
 {% extends 'base.html' %}
-{% block content %}    
+{% block content %}
     <main>
         <section class="education-section" id="education">
             <div class="container">
                 <div class="hero-identity">
                     <p class="section-kicker">Perjalanan saya sejauh ini</p>
-                    <h1>Education</h1>
+                    <div class="project-header">
+                        <h1>Education</h1>
+                        <a href="{% url 'main:create_education' %}" class="button project-add-button">
+                            <span aria-hidden="true">+</span> Tambah Pendidikan
+                        </a>
+                    </div>
                 </div>
                 <div class="education-list">
                     {% for education in education_list %}
@@ -22,6 +27,12 @@
                             </p>
                             <h2>{{ education.school_name }}</h2>
                             <p class="education-detail">{{ education.major }} </br>({{ education.grade }})</p>
+                            <div class="project-card-actions">
+                                <div class="project-actions">
+                                    <a href="{% url 'main:update_education' education.id %}" class="button">Edit</a>
+                                    {% include "components/education_delete_modal.html" with education=education %}
+                                </div>
+                            </div>
                         </div>
                     {% empty %}
                         <p class="empty-state">Belum ada riwayat pendidikan yang ditambahkan.</p>
