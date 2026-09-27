@@ -181,8 +181,32 @@ def create_project(request):
     }
     return render(request, "projects_form.html", context)
 
+@login_required(login_url="/login/")
+def update_project(request, project_id):
+    project = get_object_or_404(Project, pk=project_id)
+
+    is_editor = request.user.groups.filter(name="Editor").exists()
+    if not (request.user.is_superuser or is_editor):
+        raise PermissionDenied
+
+    form = ProjectForm(request.POST or None, instance=project)
+
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Proyek berhasil diperbarui!")
+        return redirect("main:show_projects")
+
+    context = {
+        "name": "Gde Maharta Putra Wicaksana Ridjasa",
+        "nickname": "Putra",
+        "form": form,
+        "project": project,
+    }
+    return render(request, "projects_form.html", context)
+
 def show_projects(request):
     json_response = get_projects_json(request)
+    is_editor = request.user.is_authenticated and request.user.groups.filter(name="Editor").exists()
 
     projects = serializers.deserialize(
         "json",
@@ -196,6 +220,7 @@ def show_projects(request):
         "nickname": "Putra",
         "project_list": projects,
         "title_query": title_query,
+        "is_editor": is_editor,
     }
     return render(request, "project.html", context)
 
