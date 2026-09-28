@@ -289,3 +289,71 @@ Untuk Tugas 3 ini, saya cukup sering berdiskusi dengan AI, terutama saat membang
 ## Ringkasan Peran AI
 
 AI berperan sebagai partner diskusi sekaligus penulis draf kode untuk fitur CRUD Experience dan Education (form, view, URL, template, modal konfirmasi hapus), berdasarkan pola yang sudah saya bangun sendiri di bagian Projects. Saya yang menempatkan, menyesuaikan, dan menguji kode tersebut langsung di proyek.
+
+---
+# Tugas 4
+
+## Progress
+
+### Commit 1: Manajemen Hak Akses & Peran pada Projects
+- Menambahkan view `update_project` yang membolehkan superuser maupun anggota grup `Editor` mengubah data project, sementara `create_project` dan `delete_project` tetap dibatasi hanya untuk superuser.
+- Menambahkan pengecekan `request.user.is_superuser` / keanggotaan grup `Editor` (`request.user.groups.filter(name="Editor").exists()`) di sisi server, memicu `PermissionDenied` (403) untuk peran yang tidak berhak, dan `@login_required` untuk mengarahkan pengunjung tanpa login ke halaman login.
+- Mendaftarkan path `projects/<uuid:project_id>/update/` pada `urls.py`.
+- Menjadikan `projects_form.html` reusable untuk mode create maupun update (mengikuti pola `experience_form.html` yang sudah ada), dan mengirim variabel `is_editor` dari `show_projects` ke context agar `project.html` bisa menyembunyikan tombol Tambah/Edit/Hapus dari pengguna yang tidak berhak.
+
+### Commit 2: Manajemen Hak Akses & Peran pada Experience
+- Menerapkan pola yang sama seperti Projects pada `create_experience`, `update_experience`, dan `delete_experience`: `@login_required` untuk seluruh aksi, dibatasi hanya superuser untuk create/delete, dan superuser atau grup `Editor` untuk update.
+- Mengirim variabel `is_editor` dari `show_experience` ke context, dan menyesuaikan `experience.html` agar tombol Tambah/Edit/Hapus hanya tampil untuk peran yang berhak.
+
+### Commit 3: Fitur Interaktif Pemberian Star pada Experience
+- Menambahkan relasi `ManyToManyField` ke `User` (`starred_by`, `related_name="starred_experiences"`) pada model `Experience`, mengikuti pola yang sudah ada pada `Project`, beserta migrasi database.
+- Menambahkan view `toggle_star_experience` (`@login_required`, method POST) untuk memberi/membatalkan star, memastikan satu user hanya bisa memiliki satu status star per experience (mengandalkan sifat unik keanggotaan `ManyToManyField`).
+- Membuat komponen `experience_star.html` yang menampilkan jumlah total star dan status star pengguna saat ini, mengikuti pola `project_star.html`.
+
+### Commit 4: Review Integritas API & Keamanan Data
+- Meninjau ulang `get_experience_json`, `get_education_json`, dan `get_projects_json` untuk memastikan tidak ada data sensitif milik user (seperti password) yang ikut terserialisasi, mengingat `get_projects_json` menggunakan `use_natural_foreign_keys=True` yang berpotensi menampilkan username lewat relasi `starred_by`.
+
+## AI Disclosure
+
+Tools yang digunakan: Claude Code (model Claude Sonnet 5), digunakan sebagai pair-programming assistant untuk memahami dan menerapkan pola otorisasi berbasis peran pada Tugas 4.
+
+Strategi prompting: Berbeda dari tugas-tugas sebelumnya, kali ini saya lebih sering meminta AI untuk **menjelaskan pola dan memberi contoh kode sebagai referensi**, lalu saya yang menuliskan ulang dan menerapkannya sendiri ke file proyek, bukan meminta AI langsung mengedit file. Saya juga meminta AI menjelaskan konsep-konsep yang belum saya pahami sepenuhnya di tengah proses.
+
+### Beberapa AI Interaction Log
+
+### 1. Pertanyaan pemahaman: fungsi variabel `is_editor` di context
+
+**Prompt:**
+> "fungsi 'is_editor' di context di show_projects apa?"
+
+**Konteks & tujuan:** Memahami kenapa pengecekan grup harus dihitung di Python (view), bukan langsung di template.
+
+**Ringkasan hasil:** AI menjelaskan bahwa template Django tidak bisa memanggil method dengan argumen (`groups.filter(name="Editor")`), sehingga nilai boolean harus dihitung dulu di view lalu dikirim lewat context ke template.
+
+**Dampak ke kode:** Tidak ada kode baru; pemahaman ini menjadi dasar saat saya menerapkan `is_editor` secara manual ke `show_experience`.
+
+---
+
+### 2. Permintaan cara pengujian: pembatasan hak akses di sisi server
+
+**Prompt:**
+> "gimana cara ngetesnya ya?" (terkait pembatasan hak akses 4 peran)
+
+**Ringkasan hasil:** AI menyarankan skema pengujian manual: menyiapkan akun untuk tiap peran (pengunjung, user biasa, editor, superuser), mengakses URL aksi terproteksi secara langsung (bukan lewat tombol UI yang sudah disembunyikan), dan memverifikasi respons (redirect ke login vs 403) sesuai matriks peran.
+
+**Dampak ke kode:** Tidak ada perubahan kode; digunakan sebagai panduan pengujian manual saya sendiri.
+
+---
+
+### 3. Permintaan review: keamanan endpoint JSON
+
+**Prompt:**
+> "periksa bagian [Integritas API & Keamanan Data]... sekarang"
+
+**Ringkasan hasil:** AI meninjau `get_experience_json`, `get_education_json`, dan `get_projects_json`, menyoroti bahwa `use_natural_foreign_keys=True` pada `get_projects_json` berpotensi menampilkan username (bukan sekadar ID) lewat relasi `starred_by`, dan menyarankan opsi membatasi field yang diserialisasi.
+
+**Dampak ke kode:** Rekomendasi diberikan; keputusan penerapan perbaikan (atau tidak) saya lakukan sendiri.
+
+## Ringkasan Peran AI
+
+Untuk Tugas 4, AI berperan sebagai pemandu konsep dan penyedia contoh kode referensi untuk pola otorisasi berbasis peran (grup `Editor`, pembatasan `is_superuser`), pengujian manual hak akses di sisi server, replikasi fitur star ke bagian Experience, serta review keamanan endpoint JSON. Seluruh perubahan pada `models.py`, `views.py`, `urls.py`, dan template tetap saya tuliskan dan terapkan sendiri secara manual ke proyek, termasuk menjalankan migrasi database dan pengujian di server lokal.
