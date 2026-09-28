@@ -38,11 +38,13 @@ def show_experience(request):
         json_response.content.decode("utf-8"),
     )
     experiences = [e.object for e in experiences]
+    is_editor = request.user.is_authenticated and request.user.groups.filter(name="Editor").exists()
 
     context = {
         "name": "Gde Maharta Putra Wicaksana Ridjasa",
         "nickname": "Putra",
         "experience_list": experiences,
+        "is_editor": is_editor,
     }
     return render(request, "experience.html", context)
 
@@ -51,7 +53,12 @@ def get_experience_json(request):
     experiences_json = serializers.serialize("json", experiences)
     return HttpResponse(experiences_json, content_type="application/json")
 
+@login_required(login_url="/login/")
 def create_experience(request):
+
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    
     form = ExperienceForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -66,8 +73,14 @@ def create_experience(request):
     }
     return render(request, "experience_form.html", context)
 
+@login_required(login_url="/login/")
 def update_experience(request, experience_id):
     experience = get_object_or_404(Experience, pk=experience_id)
+
+    is_editor = request.user.groups.filter(name="Editor").exists()
+    if not (request.user.is_superuser or is_editor):
+        raise PermissionDenied
+    
     form = ExperienceForm(request.POST or None, instance=experience)
 
     if request.method == "POST" and form.is_valid():
@@ -83,7 +96,11 @@ def update_experience(request, experience_id):
     }
     return render(request, "experience_form.html", context)
 
+@login_required(login_url="/login/")
 def delete_experience(request, experience_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
     experience = get_object_or_404(Experience, pk=experience_id)
 
     if request.method == "POST":
