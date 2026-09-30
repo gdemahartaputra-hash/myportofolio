@@ -8,12 +8,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied 
 
 from django.core import serializers
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from main.models import Experience, Education, Project
 from main.forms import ProjectForm, ExperienceForm, EducationForm
 
+from django.views.decorators.http import require_POST
 
 def show_main(request):
     last_login = request.COOKIES.get('last_login', 'Belum ada sesi login / Cookie tidak ditemukan')
@@ -132,11 +133,13 @@ def show_education(request):
     )
     educations = [e.object for e in educations]
     educations.sort(key=lambda e: e.started_year, reverse=True)
+    is_editor = request.user.is_authenticated and request.user.groups.filter(name="Editor").exists()
 
     context = {
         "name": "Gde Maharta Putra Wicaksana Ridjasa",
         "nickname": "Putra",
         "education_list": educations,
+        "is_editor": is_editor,
     }
     return render(request, "education.html", context)
 
@@ -146,6 +149,10 @@ def get_education_json(request):
     return HttpResponse(educations_json, content_type="application/json")
 
 def create_education(request):
+
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
     form = EducationForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -162,6 +169,11 @@ def create_education(request):
 
 def update_education(request, education_id):
     education = get_object_or_404(Education, pk=education_id)
+
+    is_editor = request.user.groups.filter(name="Editor").exists()
+    if not (request.user.is_superuser or is_editor):
+        raise PermissionDenied
+
     form = EducationForm(request.POST or None, instance=education)
 
     if request.method == "POST" and form.is_valid():
@@ -179,6 +191,10 @@ def update_education(request, education_id):
 
 
 def delete_education(request, education_id):
+
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    
     education = get_object_or_404(Education, pk=education_id)
 
     if request.method == "POST":
@@ -233,35 +249,49 @@ def update_project(request, project_id):
     }
     return render(request, "projects_form.html", context)
 
-def show_projects(request):
-    json_response = get_projects_json(request)
-    is_editor = request.user.is_authenticated and request.user.groups.filter(name="Editor").exists()
 
-    projects = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    projects = [project.object for project in projects]
+def show_projects(request):
     title_query = request.GET.get("title", "").strip()
+    is_editor = request.user.is_authenticated and request.user.groups.filter(name="Editor").exists()
 
     context = {
         "name": "Gde Maharta Putra Wicaksana Ridjasa",
         "nickname": "Putra",
-        "project_list": projects,
         "title_query": title_query,
         "is_editor": is_editor,
+        "form": ProjectForm(),
     }
     return render(request, "project.html", context)
 
 def get_projects_json(request):
     title_query = request.GET.get("title", "").strip()
-    projects = Project.objects.all()
+    projects = Project.objects.prefetch_related('starred_by').all()
 
     if title_query:
         projects = projects.filter(title__icontains=title_query)
 
-    projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
-    return HttpResponse(projects_json, content_type="application/json")
+    # Konstruksi data JSON secara manual agar bisa menyisipkan logika Star
+    data = []
+    for project in projects:
+        starred_users = project.starred_by.all()
+        is_starred = request.user in starred_users if request.user.is_authenticated else False
+        starred_by_names = ", ".join([u.username for u in starred_users])
+
+        data.append({
+            "pk": str(project.id),
+            "fields": {
+                "title": project.title,
+                "description": project.description,
+                "tech_stack": project.tech_stack,
+                "project_url": project.project_url,
+                "project_image_url": project.project_image_url,
+                "star_count": starred_users.count(),
+                "is_starred": is_starred,
+                "starred_by_names": starred_by_names,
+            }
+        })
+
+    return JsonResponse(data, safe=False)
 
 @login_required(login_url="/login/")
 def delete_project(request, project_id):
@@ -277,6 +307,26 @@ def delete_project(request, project_id):
         return redirect("main:show_projects")
 
     return redirect("main:show_projects")
+
+@require_POST
+def create_project_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse(
+            {"message": "Hanya pemilik portofolio yang dapat menambahkan proyek."},
+            status=403,
+        )
+
+    form = ProjectForm(request.POST)
+    if form.is_valid():
+        project = form.save()
+        return JsonResponse(
+            {"message": "Proyek berhasil ditambahkan.", "pk": str(project.id)},
+            status=201,
+        )
+
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
+# Register, Login, dll
 
 def register(request):
     form = UserCreationForm(request.POST or None)
