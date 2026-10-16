@@ -162,27 +162,42 @@ def toggle_star_experience(request, experience_id):
 # Education Section
 
 def show_education(request):
-    json_response = get_education_json(request)
-    educations = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    educations = [e.object for e in educations]
-    educations.sort(key=lambda e: e.started_year, reverse=True)
     is_editor = request.user.is_authenticated and request.user.groups.filter(name="Editor").exists()
 
     context = {
         "name": "Gde Maharta Putra Wicaksana Ridjasa",
         "nickname": "Putra",
-        "education_list": educations,
+        "title_query": request.GET.get("title", "").strip(),
         "is_editor": is_editor,
+        "form": EducationForm(),
     }
     return render(request, "education.html", context)
 
 def get_education_json(request):
-    educations = Education.objects.all().order_by('-started_year')
-    educations_json = serializers.serialize("json", educations)
-    return HttpResponse(educations_json, content_type="application/json")
+    title_query = request.GET.get("title", "").strip()
+    educations = Education.objects.all().order_by("-started_year")
+
+    if title_query:
+        educations = educations.filter(school_name__icontains=title_query)
+
+    data = []
+    for education in educations:
+        data.append({
+            "pk": str(education.id),
+            "fields": {
+                "school_name": education.school_name,
+                "major": education.major,
+                "grade": education.grade,
+                "category_display": education.get_category_display(),
+                "thumbnail": education.thumbnail or "",
+                "started_year": education.started_year,
+                "ended_year": education.ended_year,
+                "is_ongoing": education.is_ongoing,
+            }
+        })
+
+    return JsonResponse(data, safe=False)
+
 
 def create_education(request):
 
@@ -202,6 +217,24 @@ def create_education(request):
         "form": form,
     }
     return render(request, "education_form.html", context)
+
+@require_POST
+def create_education_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse(
+            {"message": "Hanya pemilik portofolio yang dapat menambahkan riwayat pendidikan."},
+            status=403,
+        )
+
+    form = EducationForm(request.POST)
+    if form.is_valid():
+        education = form.save()
+        return JsonResponse(
+            {"message": "Riwayat pendidikan berhasil ditambahkan.", "pk": str(education.id)},
+            status=201,
+        )
+
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 def update_education(request, education_id):
     education = get_object_or_404(Education, pk=education_id)

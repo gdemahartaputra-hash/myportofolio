@@ -364,7 +364,7 @@ h1, .brand {
     "exp";
     gap: 1.25rem 0;
     padding: 1.25rem;
-    background-color: #fff;
+    background-color: var(--paper);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     position: relative;
@@ -375,23 +375,24 @@ h1, .brand {
 
 .experience-card:hover {
     border-color: var(--ink);
-    background-color: var(--accent);
+    /* border-width: 0.2rem; */
+    background-color: #fff;
     box-shadow: 6px 6px 0 var(--ink);
     transform: translate(-6px, -6px);
 }
 
-.experience-card:hover .experience-category {
-    color: #000000;
-}
+/* .experience-card:hover .experience-category {
+    color: var(--accent-dark);
+} */
 
-.experience-card:hover h2 {
-    color: #ffffff;
+/* .experience-card:hover h2 {
+    color: #000000;
 }
 
 .experience-card:hover .experience-description,
 .experience-card:hover .experience-status {
-    color: #ffffff;
-}
+    color: #000000;
+} */
 
 
 .experience-thumbnail {
@@ -521,12 +522,31 @@ h1, .brand {
     border: 0;
     border-radius: var(--radius);
     padding: 0.65rem 1rem;
-    background: var(--accent);
+    background: var(--ink);
     color: white;
     cursor: pointer;
     font: inherit;
     font-weight: 700;
     text-decoration: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease,
+        transform 0.2s ease, background-color 0.2s ease;
+}
+
+.button:hover {
+    display: inline-block;
+    height: fit-content;
+    border: 0;
+    border-radius: var(--radius);
+    padding: 0.65rem 1rem;
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    font-weight: bold;
+    text-decoration: none;
+    border-color: var(--ink);
+    box-shadow: 6px 6px 0 var(--ink);
+    transform: translate(-6px, -6px);
 }
 
 .button-secondary {
@@ -858,6 +878,15 @@ h1, .brand {
     background: rgba(255, 255, 255, 0.25);
     font-size: 0.8rem;
 }
+
+.button-star:hover {
+    display: inline-flex;
+}
+
+.button-star:hover .star-count {
+    background: rgba(40, 54, 24, 0.15);
+}
+
 
 /* toast */
 .toast-component {

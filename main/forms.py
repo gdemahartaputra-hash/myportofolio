@@ -145,3 +145,29 @@ class EducationForm(ModelForm):
             "started_year": NumberInput(attrs={"placeholder": "2025"}),
             "ended_year": NumberInput(attrs={"placeholder": "2029"}),
         }
+
+    def clean_school_name(self):
+        school_name = strip_tags(self.cleaned_data["school_name"]).strip()
+        if not school_name:
+            raise ValidationError("Nama sekolah/universitas tidak boleh hanya berisi tag HTML.")
+        return school_name
+
+    def clean_major(self):
+        major = strip_tags(self.cleaned_data["major"]).strip()
+        if not major:
+            raise ValidationError("Jurusan tidak boleh hanya berisi tag HTML.")
+        return major
+
+    def clean_grade(self):
+        grade = strip_tags(self.cleaned_data["grade"]).strip()
+        if not grade:
+            raise ValidationError("Nilai/IPK tidak boleh hanya berisi tag HTML.")
+        return grade
+
+    def clean(self):
+        cleaned_data = super().clean()
+        started = cleaned_data.get("started_year")
+        ended = cleaned_data.get("ended_year")
+        if started and ended and ended < started:
+            raise ValidationError("Tahun selesai tidak boleh lebih awal dari tahun mulai.")
+        return cleaned_data
