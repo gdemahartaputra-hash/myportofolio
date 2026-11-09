@@ -1,14 +1,13 @@
 import uuid
 
 from django.contrib.auth.models import Group, User
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from main.models import Experience, Project
-
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 
 
 class ProjectAPITest(APITestCase):
