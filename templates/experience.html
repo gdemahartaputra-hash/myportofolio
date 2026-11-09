@@ -74,11 +74,16 @@
     const CAN_EDIT = IS_SUPERUSER || IS_EDITOR;
     const SEARCH_DEBOUNCE_DELAY = 300;
     const FORM_FIELDS = ['title', 'description', 'category', 'thumbnail', 'ended_at'];
+    const FIELD_LABELS = {
+        title: 'Judul', description: 'Deskripsi', category: 'Kategori',
+        thumbnail: 'URL Thumbnail', ended_at: 'Tanggal Selesai',
+    };
 
     let experienceAbortController;
     let searchDebounceTimer;
     let editingExperienceId = null;          // null = mode tambah, berisi id = mode edit
-    const experienceCache = new Map();       // id -> data, untuk mengisi form edit
+    let deletingExperienceId = null;
+    const experienceCache = new Map();       // id -> data, untuk mengisi form edit/hapus
 
     // Elemen DOM
     const loadingState = document.getElementById('loading');
@@ -87,16 +92,14 @@
     const gridContainer = document.getElementById('grid');
     const searchForm = document.getElementById('experience-search-form');
     const searchInput = document.getElementById('search-input');
-    const experienceModal = document.getElementById('add-experience-modal');   // null untuk non-superuser/editor
+    const categoryFilter = document.getElementById('category-filter');
+    const experienceModal = document.getElementById('add-experience-modal');     // null untuk non-superuser/editor
     const experienceForm = document.getElementById('experience-form');
     const modalTitle = document.getElementById('add-experience-modal-title');
     const submitButton = document.getElementById('experience-submit-button');
-
-    const categoryFilter = document.getElementById('category-filter');
     const deleteModal = document.getElementById('delete-experience-modal');      // null untuk non-superuser
     const deleteName = document.getElementById('delete-experience-name');
     const confirmDeleteButton = document.getElementById('confirm-delete-button');
-    let deletingExperienceId = null;
 
     function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
         loadingState.classList.toggle('hide', !showLoading);
@@ -126,6 +129,7 @@
     function experienceEndpoint(pattern, id) {
         return pattern.replace(DUMMY_UUID, id);
     }
+
 
     // Membuat elemen card experience dari objek DRF (bukan lagi item.fields / item.pk)
     function buildExperienceCardElement(experience) {
@@ -182,6 +186,7 @@
         return articleElement;
     }
 
+    // GET daftar experience dari API DRF dengan filter judul dan kategori yang sedang aktif
     async function fetchExperience() {
         if (experienceAbortController) experienceAbortController.abort();
         experienceAbortController = new AbortController();
@@ -211,10 +216,6 @@
         }
     }
 
-    const FIELD_LABELS = {
-        title: 'Judul', description: 'Deskripsi', category: 'Kategori',
-        thumbnail: 'URL Thumbnail', ended_at: 'Tanggal Selesai',
-    };
 
     // {"title": ["..."]} -> "Judul: ...", sedangkan {"detail": "..."} tetap apa adanya
     function apiErrorMessage(data, status) {
@@ -246,7 +247,7 @@
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
             const error = new Error(apiErrorMessage(data, response.status));
-            error.fieldErrors = data;
+            error.fieldErrors = data;          // dipakai untuk menampilkan error di bawah field
             throw error;
         }
         return data;
@@ -288,11 +289,12 @@
         }
     }
 
+    // Modal hapus
     function openDeleteModal(id) {
         const experience = experienceCache.get(id);
         if (!experience) return;
         deletingExperienceId = id;
-        deleteName.textContent = experience.title;
+        deleteName.textContent = experience.title;   // textContent: aman dari XSS
         deleteModal.showPopover();
     }
 
@@ -318,7 +320,8 @@
         });
     }
 
-    // Modal: mode tambah vs mode edit
+
+    // Modal form: mode tambah vs mode edit
     function setCreateMode() {
         editingExperienceId = null;
         experienceForm.reset();
@@ -360,7 +363,7 @@
             }
             experienceModal.hidePopover();
             showToast('Berhasil', isEditing ? 'Pengalaman berhasil diperbarui!' : 'Pengalaman baru berhasil ditambahkan!', 'success');
-            await fetchExperience(searchInput.value.trim());
+            await fetchExperience();
         } catch (error) {
             showFieldErrors(error.fieldErrors);
             showToast(isEditing ? 'Gagal memperbarui pengalaman' : 'Gagal menambahkan pengalaman', error.message, 'error');
@@ -388,20 +391,26 @@
         else if (action === 'delete') openDeleteModal(id);
     });
 
+    // Pencarian judul dengan debouncing (300 ms)
+    searchInput.addEventListener('input', function () {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(fetchExperience, SEARCH_DEBOUNCE_DELAY);
+    });
 
     searchForm.addEventListener('submit', function (event) {
         event.preventDefault();
         clearTimeout(searchDebounceTimer);
-        fetchExperience(searchInput.value.trim());
+        fetchExperience();
     });
 
+    // Filter kategori langsung memuat ulang, tanpa debounce
     categoryFilter.addEventListener('change', function () {
         clearTimeout(searchDebounceTimer);
         fetchExperience();
     });
 
     // Start application
-    fetchExperience(searchInput.value.trim());
+    fetchExperience();
     </script>
 
 {% endblock content %}
