@@ -46,7 +46,7 @@ class MainTest(TestCase):
         self.assertContains(response, f'href="{reverse("main:show_main")}"')
         # Data dimuat lewat fetch(), jadi HTML hanya berisi kerangka dan alamat endpoint.
         self.assertContains(response, 'id="grid"')
-        self.assertContains(response, reverse("main:get_experience_json"))
+        self.assertContains(response, reverse("api:experience-list"))
         self.assertNotContains(response, self.experience.title)
 
     def test_experience_json_returns_data(self):
