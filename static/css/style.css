@@ -618,6 +618,11 @@ h1, .brand {
     border-color: var(--accent);
 }
 
+.project-search__select {
+    max-width: 14rem;
+}
+
+
 .project-actions {
     display: flex;
     align-items: center;
@@ -734,6 +739,10 @@ h1, .brand {
 
     .project-search {
         flex-direction: column;
+    }
+
+    .project-search__select {
+        max-width: none;
     }
 
     .project-search .button {

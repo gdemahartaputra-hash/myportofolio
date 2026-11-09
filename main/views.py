@@ -41,6 +41,7 @@ def show_experience(request):
         "title_query": request.GET.get("title", "").strip(),
         "is_editor": is_editor,
         "form": ExperienceForm(),
+        "category_choices": Experience.EXPERIENCE_CHOICES,
     }
     return render(request, "experience.html", context)
 
