@@ -7,6 +7,9 @@ from rest_framework.test import APIClient, APITestCase
 
 from main.models import Experience, Project
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
 
 class ProjectAPITest(APITestCase):
     def setUp(self):
@@ -328,3 +331,25 @@ class ExperienceAPITest(APITestCase):
         token = client.cookies["csrftoken"].value
         response = client.post(self.list_url, self.payload, format="json", HTTP_X_CSRFTOKEN=token)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_filter_by_category(self):
+        Experience.objects.create(title="Riset AI", description="Riset.", category="research")
+        response = self.client.get(self.list_url, {"category": "research"})
+        self.assertEqual([item["title"] for item in response.data], ["Riset AI"])
+        response = self.client.get(self.list_url, {"category": "research", "title": "asisten"})
+        self.assertEqual(response.data, [])
+
+    def test_list_query_count_does_not_grow_with_data(self):
+        """prefetch_related("starred_by") harus mencegah N+1 query pada field star."""
+        with CaptureQueriesContext(connection) as few:
+            self.client.get(self.list_url)
+        for index in range(5):
+            experience = Experience.objects.create(
+                title=f"Pengalaman {index}", description="Deskripsi.",
+            )
+            experience.starred_by.add(self.visitor, self.editor)
+        with CaptureQueriesContext(connection) as many:
+            response = self.client.get(self.list_url)
+        self.assertEqual(len(response.data), 6)
+        self.assertEqual(len(few), len(many))
+
