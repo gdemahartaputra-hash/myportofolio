@@ -48,10 +48,39 @@ Website ini menampilkan profil, riwayat pendidikan, dan pengalaman (experience) 
 
 ## Setup / Menjalankan Proyek
 
-1. Clone repository ini:
+1. Clone repository dan masuk ke foldernya:
    ```bash
    git clone <url-repo-ini>
    cd myportofolio
+   ```
+2. Buat dan aktifkan virtual environment:
+   ```bash
+   python -m venv env
+   # Windows
+   env\Scripts\activate
+   # macOS / Linux
+   source env/bin/activate
+   ```
+3. Install dependency, termasuk Django REST Framework (`djangorestframework~=3.18.3`):
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+4. Siapkan database dan akun pemilik portofolio:
+   ```bash
+   python manage.py migrate
+   python manage.py createsuperuser
+   ```
+5. (Opsional) Buat grup `Editor` lewat `/admin/`, lalu tambahkan akun yang boleh mengubah data.
+6. Jalankan server di `http://localhost:8000`:
+   ```bash
+   python manage.py runserver
+   ```
+7. Jalankan test (gunakan `test main`, bukan `test` saja):
+   ```bash
+   python manage.py test main
+   ```
+
+Endpoint API dapat dibuka langsung di browser lewat Browsable API DRF, misalnya `/api/v1/experience/` dan `/api/v1/projects/`. Tambahkan `?format=json` untuk melihat JSON mentah.
 
 
 ## Progress
@@ -380,3 +409,90 @@ Untuk Tugas 4, AI berperan sebagai pemandu konsep dan penyedia contoh kode refer
 ## AI Disclosure
 
 Tools yang digunakan: Claude Code (model Claude Sonnet 5.5), digunakan untuk mereview kebenaran pengerjaan Tugas 05 terhadap instruksi tugas dan membandingkannya dengan hasil pengerjaan tutorial 5 sebagai panduan pengerjaan tugas 05.
+
+
+---
+# Tugas 6
+
+### Tugas 6
+
+1. **REST (Representational State Transfer)** adalah gaya arsitektur untuk merancang web API, bukan library atau format data. Tiga gagasan utamanya yang saya terapkan: data diperlakukan sebagai *resource* yang ditunjuk oleh URL (`/api/v1/experience/` untuk kumpulan, `/api/v1/experience/<uuid>/` untuk satu data), HTTP method menyatakan tindakan (GET membaca, POST membuat, PUT/PATCH mengubah, DELETE menghapus) sehingga tindakan tidak ditulis di URL, dan klien bertukar *representasi* data (JSON), bukan objek Python. Mengembalikan JSON saja belum cukup untuk disebut RESTful. Endpoint Tugas 5 saya seperti `POST /experience/add-ajax/` dan `POST /experience/<uuid>/delete/` memang mengembalikan JSON atau redirect, tetapi tindakannya ditulis di URL dan semua perubahan memakai POST. Di Tugas 6 keduanya menjadi `POST /api/v1/experience/` dan `DELETE /api/v1/experience/<uuid>/`, dengan status HTTP yang bermakna (201, 204, 400, 403, 404).
+
+    **PUT** mengirim representasi pengganti yang utuh, sehingga semua field wajib harus dikirim. Di test saya, PUT yang hanya berisi `title` ditolak dengan 400 karena `description` wajib. **PATCH** hanya mengirim field yang ingin diubah (`partial=True` di serializer), field lain tetap memakai nilai lama. PUT cocok saat klien memang memegang seluruh data dan ingin menggantinya, misalnya form edit yang mengirim semua field sekaligus. PATCH cocok untuk perubahan sebagian, misalnya Editor yang hanya mengganti kategori pengalaman dari `internship` menjadi `part-time`. Modal edit di halaman Experience saya memakai PATCH.
+
+2. **Serializer** pada DRF bekerja dua arah. Saat GET, serializer mengubah objek model menjadi tipe data Python yang siap dirender menjadi JSON (*serialization*). Saat POST/PUT/PATCH, serializer memvalidasi `request.data` lalu menyimpannya lewat `.save()` (*deserialization*). Di `ExperienceSerializer`, saya menentukan `fields` secara eksplisit, membuat `id` dan `started_at` read-only, menambahkan `category_display` dan `is_ongoing` sebagai field read-only, serta memvalidasi `title` dan `description` dengan `strip_tags` di `validate_<field>`. Field star (`star_count`, `is_starred`, `starred_by_names`) saya ekstrak ke `StarInfoMixin` agar dipakai bersama oleh `ProjectSerializer` dan `ExperienceSerializer`.
+
+    Dibandingkan merakit dictionary manual dengan `JsonResponse` seperti di Tutorial 05, keuntungannya: (1) kontrak data ditulis sekali dan dipakai untuk daftar, detail, maupun hasil create/update, sehingga tidak ada perulangan `data.append({...})` yang bisa tidak sinkron; (2) validasi input dan pesan error per field (`{"title": ["..."]}`) dihasilkan otomatis, termasuk validasi bawaan dari model seperti `URLField` dan pilihan `category`; (3) field read-only otomatis diabaikan saat input, sehingga klien tidak bisa memalsukan `star_count`; dan (4) logika yang sama bisa dipakai ulang lewat mixin, bukan disalin ke setiap view.
+
+3. **Autentikasi** menjawab "siapa pengirim request ini", sedangkan **otorisasi** menjawab "bolehkah ia melakukan tindakan ini". Di DRF keduanya dipisahkan: authentication class (`SessionAuthentication`) membaca session Django lalu mengisi `request.user`, kemudian permission class (`IsPortfolioOwnerOrEditorOrReadOnly`, `IsAuthenticated`) memutuskan apakah request diteruskan ke isi view. Pengunjung tanpa login tidak ditolak di tahap autentikasi, tetapi diperlakukan sebagai anonim dan baru ditolak di tahap permission dengan 403.
+
+    Hak akses harus diperiksa di server karena menyembunyikan tombol di template hanya mengatur tampilan. Siapa pun tetap bisa mengirim request langsung, misalnya lewat DevTools Console, `curl`, atau Browsable API, tanpa pernah melihat tombolnya. Jika server tidak memeriksa, pengguna biasa bisa mengirim `DELETE /api/v1/experience/<uuid>/` dan datanya benar-benar terhapus. Karena itu test saya (`test_guest_and_visitor_cannot_write`, `test_editor_can_update_but_not_create_or_delete`) memanggil API secara langsung dan memeriksa isi database, bukan hanya memastikan tombolnya tidak tampil.
+
+4. `SessionAuthentication` mengandalkan cookie session yang **dikirim otomatis oleh browser** ke domain kita, termasuk ketika request dipicu oleh halaman dari situs lain. Tanpa token CSRF, situs jahat bisa membuat korban yang sedang login mengirim `POST` atau `DELETE` ke API portofolio, dan server akan menganggapnya sah karena cookie session-nya valid. Token CSRF membuktikan bahwa request berasal dari halaman kita sendiri, karena situs lain tidak bisa membaca nilai cookie `csrftoken` untuk mengisi header `X-CSRFToken`. Karena itu `sendExperience()` selalu menyertakan header tersebut, dan saya menambahkan `{% csrf_token %}` di halaman agar cookie-nya tetap terbentuk untuk pengguna biasa dan Editor yang tidak melihat form.
+
+    `force_authenticate` melewati proses autentikasi: `APIClient` langsung menetapkan `request.user` tanpa session dan tanpa login, sehingga pemeriksaan CSRF milik `SessionAuthentication` tidak pernah dijalankan. Test dengan `force_authenticate` hanya membuktikan logika permission, bukan perlindungan CSRF. Untuk membuktikannya, saya memakai `APIClient(enforce_csrf_checks=True)` dan `.login()` yang membuat session sungguhan. `test_session_write_without_csrf_is_rejected` membuktikan PATCH dari Editor tanpa token ditolak 403 dan data tidak berubah, sedangkan `test_session_write_with_csrf_succeeds` membuktikan request dengan token yang benar diterima.
+
+
+## Progress
+
+### Commit 1: Serializer dan API DRF untuk Experience
+- Menambahkan `ExperienceSerializer` (`ModelSerializer`) dengan `fields` eksplisit, field read-only `category_display`, `is_ongoing`, `star_count`, `is_starred`, dan `starred_by_names`, serta validasi `title` dan `description` berbasis `strip_tags`.
+- Menambahkan API view berbasis fungsi `experience_list` (GET, POST, pencarian `?title=`), `experience_detail` (GET, PUT, PATCH, DELETE), dan `experience_star` (POST) dengan `SessionAuthentication`.
+- Memasang `IsPortfolioOwnerOrEditorOrReadOnly` pada daftar/detail dan `IsAuthenticated` pada star, lalu mendaftarkan route `api:experience-list`, `api:experience-detail`, dan `api:experience-star` di bawah `/api/v1/experience/`.
+
+### Commit 2: Integrasi halaman Experience dengan API DRF
+- Mengubah `experience.html` agar menampilkan, mencari, menambah, memberi star, dan menghapus data lewat `/api/v1/experience/` tanpa reload, dengan kontrak JSON baru (`experience.id`, `experience.title`, bukan `item.fields`/`item.pk`).
+- Menambahkan mode edit pada modal form yang mengirim PATCH, sehingga Editor dan pemilik dapat mengubah data dari halaman yang sama.
+- Menyatukan request tulis di `sendExperience()` yang selalu mengirim JSON, header `X-CSRFToken`, dan menampilkan error 400/403 lewat toast. Menambahkan `{% csrf_token %}` di halaman agar cookie CSRF tetap terbentuk untuk pengguna biasa.
+
+### Commit 3: Test API Experience
+- Menambahkan `ExperienceAPITest` (`APITestCase`) yang menguji setiap peran: pengunjung dan pengguna biasa ditolak menulis, Editor boleh PUT/PATCH tetapi ditolak POST/DELETE, dan pemilik boleh membuat, mengubah, serta menghapus data, dengan pemeriksaan isi database pada setiap penolakan.
+- Menguji validasi input, star (termasuk penolakan pengunjung dan 405 untuk GET), field read-only, 404, serta CSRF dengan `APIClient(enforce_csrf_checks=True)` dan `.login()`.
+- Menyesuaikan test halaman Experience di `tests.py` dengan endpoint API baru.
+
+### Commit 4–5: Refactor serializer dan view
+- Mengekstrak `StarInfoMixin` agar field star dipakai bersama oleh `ProjectSerializer` dan `ExperienceSerializer`, serta helper `clean_text` untuk validasi teks dan `toggle_star` untuk logika star di kedua endpoint.
+- Memperjelas pesan error di toast dengan menyertakan nama field (misalnya "Judul: ...").
+
+### Commit 6–7: Fitur tambahan di halaman Experience
+- Menambahkan filter kategori lewat parameter `?category=` di API dan dropdown di halaman.
+- Memperbarui hanya kartu yang diberi star dari response API, tanpa memuat ulang seluruh daftar.
+- Mengganti `window.confirm` dengan modal konfirmasi hapus, serta menampilkan error validasi di bawah field yang salah di dalam modal.
+
+### Commit 8: Test tambahan
+- Menambahkan test filter kategori dan test yang membuktikan jumlah query tidak bertambah seiring jumlah data (pencegahan N+1 query lewat `prefetch_related("starred_by")`).
+
+### Commit 9–10: Docstring dan perbaikan
+- Menambahkan docstring pada modul, kelas, dan view di `serializers.py`, `permissions.py`, dan `api_views.py`. Docstring ini sebenarnya disebut di commit refactor sebelumnya, tetapi baru benar-benar ikut di commit ini.
+- Mengembalikan listener pencarian debounce yang sempat terhapus, dan merapikan pemanggilan `fetchExperience()` serta label modal.
+
+# AI Disclosure & Analisis Kritis Keterbatasan AI
+
+Dalam pengerjaan Tugas 6, saya menggunakan **Claude Code** sebagai AI coding assistant yang membantu proses pengembangan proyek. Penggunaan AI dilakukan dengan menjadikan panduan resmi Tugas 6 sebagai acuan agar implementasi tetap sesuai dengan instruksi, kebutuhan, dan kriteria penilaian yang telah ditentukan. Selain membantu proses pengerjaan, Claude Code juga digunakan untuk meninjau dan memeriksa kembali hasil implementasi guna meningkatkan ketelitian serta meminimalkan kesalahan.
+
+### Tools yang Digunakan:
+- **Claude Code:** Digunakan sebagai pendamping dalam proses pengembangan, pemberi arahan teknis, serta alat bantu untuk melakukan pemeriksaan dan evaluasi terhadap hasil pengerjaan.
+
+### Bagian yang Dibantu AI:
+
+1. **Pemahaman Instruksi dan Analisis Kebutuhan:** Membantu memahami panduan Tugas 6, mengidentifikasi kebutuhan implementasi, serta memastikan fitur dan komponen yang dikembangkan mengacu pada ketentuan tugas.
+
+2. **Pendampingan Implementasi:** Memberikan arahan, rekomendasi, dan alternatif solusi teknis selama proses pengembangan proyek. Setiap implementasi tetap diarahkan berdasarkan kebutuhan proyek dan panduan tugas.
+
+3. **Identifikasi dan Penyelesaian Kendala:** Membantu menganalisis error, mengidentifikasi kemungkinan penyebab permasalahan, serta memberikan rekomendasi perbaikan ketika ditemukan kendala selama proses pengerjaan.
+
+4. **Code Review dan Pemeriksaan Akhir:** Melakukan peninjauan ulang terhadap kode dan hasil implementasi untuk memeriksa konsistensi struktur, ketepatan fungsionalitas, serta kesesuaiannya dengan panduan Tugas 6.
+
+### Analisis Kritis Keterbatasan AI & Perbaikan Manual:
+
+1. **Ketepatan terhadap Instruksi Tugas:** Rekomendasi AI tidak selalu secara otomatis mencerminkan seluruh ketentuan dalam panduan tugas. Oleh karena itu, saya tetap menjadikan panduan resmi Tugas 6 sebagai acuan utama dan meninjau kembali setiap rekomendasi yang diberikan.
+
+2. **Kesesuaian Implementasi:** Solusi yang disarankan AI belum tentu menjadi pendekatan paling sesuai dengan kebutuhan proyek. Saya melakukan evaluasi terhadap setiap saran agar implementasi tidak menyimpang dari tujuan dan kebutuhan yang telah ditentukan.
+
+3. **Potensi Kesalahan Kode:** Hasil analisis maupun rekomendasi perbaikan dari AI masih berpotensi mengandung kesalahan. Oleh karena itu, saya menggunakan Claude Code untuk melakukan pemeriksaan berulang dan memastikan bagian yang diperbaiki tetap konsisten dengan keseluruhan implementasi.
+
+4. **Validasi Hasil Akhir:** Pemeriksaan yang dilakukan AI tidak sepenuhnya menjamin bahwa seluruh fungsionalitas berjalan sebagaimana mestinya. Saya tetap bertanggung jawab untuk meninjau hasil pengerjaan dan memastikan kesesuaiannya dengan ketentuan tugas.
+
+### Kesimpulan Reflektif
+
+Penggunaan Claude Code dalam pengerjaan Tugas 6 membantu saya menjalankan proses pengembangan secara lebih terarah dan teliti. AI tidak hanya dimanfaatkan sebagai pendamping dalam memahami panduan dan mengimplementasikan kebutuhan tugas, tetapi juga sebagai sarana untuk melakukan pemeriksaan ulang terhadap hasil pengerjaan. Meskipun demikian, AI tetap memiliki keterbatasan sehingga setiap rekomendasi perlu ditinjau secara kritis. Tanggung jawab atas keputusan implementasi, validasi, dan hasil akhir proyek tetap berada pada saya sebagai pengembang.
