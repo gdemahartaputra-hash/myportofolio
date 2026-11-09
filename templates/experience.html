@@ -190,9 +190,18 @@
         }
     }
 
-    // Membaca error DRF: {"title": ["..."]} (400) atau {"detail": "..."} (403/404)
+    const FIELD_LABELS = {
+        title: 'Judul', description: 'Deskripsi', category: 'Kategori',
+        thumbnail: 'URL Thumbnail', ended_at: 'Tanggal Selesai',
+    };
+
+    // {"title": ["..."]} -> "Judul: ...", sedangkan {"detail": "..."} tetap apa adanya
     function apiErrorMessage(data, status) {
-        const messages = Object.values(data).flat().filter(value => typeof value === 'string');
+        const messages = Object.entries(data).flatMap(([field, value]) =>
+            [].concat(value)
+                .filter(message => typeof message === 'string')
+                .map(message => (field in FIELD_LABELS ? `${FIELD_LABELS[field]}: ${message}` : message))
+        );
         return messages.join(' ') || `Terjadi kesalahan (HTTP ${status}).`;
     }
 
