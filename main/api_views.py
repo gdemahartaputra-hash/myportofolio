@@ -12,6 +12,12 @@ from main.permissions import IsPortfolioOwnerOrEditorOrReadOnly
 from main.serializers import ExperienceSerializer, ProjectSerializer
 
 
+def toggle_star(instance, user):
+    if instance.starred_by.filter(pk=user.pk).exists():
+        instance.starred_by.remove(user)
+    else:
+        instance.starred_by.add(user)
+
 @api_view(["GET", "HEAD", "POST"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsPortfolioOwnerOrEditorOrReadOnly])
@@ -30,6 +36,7 @@ def project_list(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 @api_view(["GET", "HEAD", "PUT", "PATCH", "DELETE"])
 @authentication_classes([SessionAuthentication])
@@ -54,17 +61,16 @@ def project_detail(request, project_id):
     serializer.save()
     return Response(serializer.data)
 
+
 @api_view(["POST"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsAuthenticated])
 def project_star(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
-    if project.starred_by.filter(pk=request.user.pk).exists():
-        project.starred_by.remove(request.user)
-    else:
-        project.starred_by.add(request.user)
+    toggle_star(project, request.user)
     serializer = ProjectSerializer(project, context={"request": request})
     return Response(serializer.data)
+
 
 # Experience API (Tugas 6)
 
@@ -77,6 +83,9 @@ def experience_list(request):
         title = request.query_params.get("title", "").strip()
         if title:
             experiences = experiences.filter(title__icontains=title)
+        category = request.query_params.get("category", "").strip()
+        if category:
+            experiences = experiences.filter(category=category)
         serializer = ExperienceSerializer(
             experiences, many=True, context={"request": request},
         )
@@ -117,9 +126,6 @@ def experience_detail(request, experience_id):
 @permission_classes([IsAuthenticated])
 def experience_star(request, experience_id):
     experience = get_object_or_404(Experience, pk=experience_id)
-    if experience.starred_by.filter(pk=request.user.pk).exists():
-        experience.starred_by.remove(request.user)
-    else:
-        experience.starred_by.add(request.user)
+    toggle_star(experience, request.user)
     serializer = ExperienceSerializer(experience, context={"request": request})
     return Response(serializer.data)
